@@ -1,0 +1,38 @@
+# Core
+python-dotenv
+
+# Data
+pandas
+numpy
+duckdb
+
+# Visualization
+matplotlib
+seaborn
+
+# DS analysis
+scipy
+statsmodels
+shap
+
+# ML
+scikit-learn
+xgboost
+imbalanced-learn
+mlflow
+
+# AI / agent
+langchain
+langchain-anthropic
+anthropic
+chromadb
+evidently
+
+# Deployment
+fastapi
+uvicorn[standard]
+streamlit
+
+# Dev / testing
+pytest
+jupyter
