@@ -2,11 +2,11 @@
 
 **Type**: Independent DS/ML portfolio project
 **Author**: Tushar
-**Build start**: 9 September 2026
-**Core objectives (1–4) target**: 27 October 2026 — fixed 7-week schedule, see `docs/roadmap.md`
-**Stretch objectives (5–6) + deployment**: dates TBD, begin only after Core is verified complete; the original 23 October deploy target is no longer achievable given the actual start date and is retired rather than left stale
-**Status**: Core build in progress (Week 1)
-**Revision**: 9 September 2026 — methodology resolved for Objectives 1–4, schedule replanned from actual start date
+**Build window**: 5 October – 4 November 2026 (one month, assumed 20 hours/week), see `docs/roadmap.md`
+**Core objectives (1–4)**: Phases 1–3, 5–25 October
+**Stretch objectives**: Objective 5 (AWS deployment) in Phase 4, 26 October – 1 November, after the Core verification pass; Objective 6 scoped down to a lite version in Phase 5, 2–4 November. Items cut to fit the window are listed under "Deferred" in the roadmap.
+**Status**: Not started (Phase 1 begins 5 October)
+**Revision**: 4 October 2026 — schedule compressed to a one-month window; methodology for Objectives 1–4 unchanged
 
 ---
 
@@ -23,7 +23,7 @@ Telecom churn costs providers billions annually, and most churn-prediction proje
 ### 1.1 Core Objectives
 
 - **Objective 1 (Core)**: Identify the strongest driver(s) of churn across all 58 Cell2Cell features through EDA and cohort analysis. Method: rank every feature by effect size against churn (point-biserial correlation / Cramér's V / Mann-Whitney U as appropriate to type), not by p-value alone — at 71K rows almost everything is "significant," so effect size is what separates a real driver from noise. The top 3–5 candidates get full cohort comparison (churn-rate lift, confidence interval, cohort sample size) before one is selected. The proposal's working hypothesis (a billing-error-related signal) is a candidate to test, not a predetermined answer — if EDA surfaces a stronger, unrelated driver, that's what gets carried into Objective 2.
-- **Objective 2 (Core)**: Validate the leading driver causally. Method depends on data structure, confirmed in Week 1: if Cell2Cell is a single cross-sectional snapshot per customer (expected — no repeated per-customer observations over time), propensity score matching is the feasible method, with covariate balance diagnostics (standardized mean differences) reported and an ATT estimate given with a confidence interval, not a point estimate alone. Difference-in-differences is only used if the data turns out to have genuine panel structure; this is checked before either method is committed to.
+- **Objective 2 (Core)**: Validate the leading driver causally. Method depends on data structure, confirmed in Phase 1: if Cell2Cell is a single cross-sectional snapshot per customer (expected — no repeated per-customer observations over time), propensity score matching is the feasible method, with covariate balance diagnostics (standardized mean differences) reported and an ATT estimate given with a confidence interval, not a point estimate alone. Difference-in-differences is only used if the data turns out to have genuine panel structure; this is checked before either method is committed to.
 - **Objective 3 (Core)**: Build and tune an XGBoost churn classifier — target AUC-ROC 0.75–0.80 on Cell2Cell, in line with published benchmarks for this dataset (a known hard, noisy one; claims of 90%+ on it typically indicate leakage) — with SHAP-based explainability, evaluated against both a logistic regression baseline and the mandatory persistence baseline. Evaluation is class-specific: precision/recall/F1 on the churn-positive (minority) class, not overall accuracy alone. Model-vs-baseline comparison uses a significance test (e.g. DeLong's test on AUC), not a bare metric delta.
 - **Objective 4 (Core)**: Design a CUPED-based A/B experiment simulating a retention intervention targeted at the validated driver. Since no real intervention outcome exists in historical data, the simulation protocol is stated explicitly rather than left implicit: split a held-out cohort into control/treatment, inject an assumed effect size grounded in published retention-campaign literature (roughly high-single-digit to ~15–20% relative churn reduction — not the 30% figure earlier drafts of this narrative used), then measure CUPED's variance reduction and the significance test result on both raw and CUPED-adjusted outcomes. Every report of this result states plainly that the treatment effect is a simulated assumption, not a measured one.
 - **Objective 5 (Stretch)**: Deploy the classifier as a FastAPI service, containerized with Docker, to **AWS** — MLflow-registered model artifacts pushed to S3, image built and pushed to ECR, served from ECS Fargate (or App Runner if Fargate proves more setup than a solo project needs — decided when this objective starts, not now), with a GitHub Actions pipeline that builds, tests, and deploys on push. A Streamlit dashboard (cohort analysis, A/B results, model performance, drift status) runs alongside, initially local/Docker Compose. This is the objective that turns "AWS" from an unbacked line in Technical Skills into a demonstrated deployment.
@@ -247,4 +247,4 @@ Core (Objectives 1–4) runs entirely on local/free tooling. Once Objective 5 ad
 
 ## 11. Roadmap
 
-Full week-by-week build plan (7 fixed weeks for Core Objectives 1–4, then Weeks 8–12 for Stretch Objectives 5–6, counted from whenever Week 7's Core gate actually passes): [`docs/roadmap.md`](roadmap.md).
+Five-phase, one-month build plan (5 October – 4 November 2026) with a gate per phase: [`docs/roadmap.md`](roadmap.md).
