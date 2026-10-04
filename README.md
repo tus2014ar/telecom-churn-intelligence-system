@@ -2,7 +2,7 @@
 
 End-to-end DS and ML project for churn prediction, causal analysis, experimentation, and (planned) cloud deployment with agentic monitoring.
 
-> **Status: Core build in progress — Week 1 (EDA + driver ranking). No results yet.** Every metric in this repo is "TBD" until it exists in committed code with a reproducible output.
+> **Status: Not started — Phase 1 (EDA + driver ranking) begins Oct 5, 2026. No results yet.** Every metric in this repo is "TBD" until it exists in committed code with a reproducible output.
 
 ## Business Problem
 
@@ -21,7 +21,7 @@ Full details: [`docs/PROPOSAL.md`](docs/PROPOSAL.md).
 | 3 | Tuned XGBoost vs. logistic regression and persistence baselines, with SHAP; target AUC-ROC 0.75–0.80 on Cell2Cell | Core | Not started |
 | 4 | CUPED-based *simulated* A/B experiment on the validated driver | Core | Not started |
 | 5 | FastAPI service deployed to AWS (S3, ECR, ECS Fargate/App Runner, CloudWatch) | Stretch | Not started |
-| 6 | LangChain + Claude drift-diagnosis agent with Evidently AI | Stretch | Not started |
+| 6 | Evidently AI drift report with a logged Claude diagnosis (lite version in the one-month window; full agent deferred) | Stretch | Not started |
 
 Stretch work starts only after Core is verified complete.
 
@@ -77,6 +77,6 @@ pip install -r requirements.txt
 
 ## Roadmap
 
-7 fixed weeks for Core Objectives 1–4 (through Oct 27), then Weeks 8–12 for Stretch, counted from whenever Core's verification gate passes. Weekly checkpoints and detail: [`docs/roadmap.md`](docs/roadmap.md).
+One-month plan (Oct 5 – Nov 4, 2026) in five phases, each with a gate: driver discovery, causal validation and baseline, modeling and experimentation, verification and AWS deployment, monitoring-lite and release. Detail: [`docs/roadmap.md`](docs/roadmap.md).
 
 A results section, architecture diagram, and quantified business impact will be added only once real numbers exist.

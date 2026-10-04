@@ -1,103 +1,72 @@
 # Roadmap
 
-**Revised 2026-09-09.** The original 13-week plan (Jul 25 start) never started building; this revision replaces the stale calendar with a Core-objectives-first plan starting from the actual build date. Core objectives (1–4, matching `docs/PROPOSAL.md` §1.1) get a fixed 7-week schedule (Weeks 1–7) below. Stretch objectives (5–6: AWS-deployed FastAPI service, LangChain+Claude drift agent) get planned Weeks 8–12, but those weeks start counting only once Week 7's Core gate actually passes — per the proposal's explicit priority, Core is not shortchanged to start Stretch work early. 12 weeks total, not 13; the extra rigor in Weeks 1–7 (balance diagnostics, multi-candidate cohort comparison, reproducibility pass) replaced a week the original plan didn't budget for.
+**Revised 2026-10-04.** One-month plan: **Oct 5 – Nov 4, 2026**, at an assumed **20 hours/week** (about 85 hours total). The earlier 12-week plan (about 7 hours/week) never got past setup; this revision keeps every verification checkpoint and cuts breadth instead: Objective 6 is scoped down to a "lite" version, and the Core reproducibility pass shrinks from a week to about two days. If hours per week drop below 20, Objective 6 is dropped first.
+
+Phases map to `docs/PROPOSAL.md` §1.1. A phase is not done until its gate is met.
 
 ## Goal
 
-Build a production-grade system that finds business-changing insights in telecom churn data, validates them with rigorous experimentation, and deploys an ML pipeline with agentic AI monitoring — a story usable in both DS and MLE interviews.
+Build a system that finds business-changing insights in telecom churn data, validates them with rigorous experimentation, and deploys an ML pipeline to AWS with monitoring — a story usable in both DS and MLE interviews.
 
-- **DS narrative:** Hypothesis to test in Week 1 EDA — billing errors in a subscriber's first 90 days are a *candidate* churn driver, one of several ranked by effect size, not a foregone conclusion. Published churn-driver research typically finds single-factor risk multipliers in the 1.5x–3x range; anything found here gets stated as an EDA finding, then only claimed as causal after Week 3's propensity-matching analysis, never before. Once validated, a CUPED-based simulated experiment (Week 6) tests a retention intervention against it, and an LLM agent (Weeks 10–11) automates monitoring and stakeholder reporting.
-- **ML narrative:** XGBoost churn model, target AUC-ROC 0.75–0.80 on Cell2Cell (a known hard, noisy benchmark dataset — published results cluster around 0.70–0.78) with a cross-dataset validation check on IBM Telco (cleaner, smaller — realistic target 0.84–0.87). Deployed to AWS (S3 + ECR + ECS Fargate/App Runner, Weeks 8–9) behind a FastAPI service (<100ms), tracked in MLflow — plus an agentic monitoring system (Weeks 10–11) that detects drift, diagnoses root cause via an LLM decision tree, and can trigger retraining autonomously, with every decision logged and auditable.
+- **DS narrative:** Hypothesis to test in Phase 1 — billing errors in a subscriber's first 90 days are a *candidate* churn driver, one of several ranked by effect size, not a foregone conclusion. Published churn-driver research typically finds single-factor risk multipliers in the 1.5x–3x range; anything found here is stated as an EDA finding, and only claimed as causal after Phase 2's propensity-matching analysis. Once validated, a CUPED-based simulated experiment (Phase 3) tests a retention intervention against it.
+- **ML narrative:** XGBoost churn model, target AUC-ROC 0.75–0.80 on Cell2Cell (a known hard, noisy benchmark dataset — published results cluster around 0.70–0.78), with a cross-dataset check on IBM Telco (cleaner, smaller — realistic target 0.84–0.87). Deployed to AWS behind a FastAPI service (Phase 4), with a lite drift-monitoring step (Phase 5).
 
 ## Datasets
 
-- **Cell2Cell** (71K subscribers, 58 features, Duke/Teradata) — primary training data
-- **IBM Telco** (7K subscribers, 21 features) — validation dataset
+- **Cell2Cell** (train 51,047 + holdout 20,000 rows, 58 columns) — primary training data
+- **IBM Telco** (7,043 rows, 21 columns) — validation dataset
 
-## Core build — Objectives 1–4 (fixed schedule)
+## Phases
 
-Cross-references `docs/PROPOSAL.md` §1.1. Each week ends with a stated verification checkpoint; a week doesn't get marked done without it.
+| Phase | Dates | Objectives | Tier |
+|---|---|---|---|
+| 1. Driver discovery | Oct 5–11 | 1 | Core |
+| 2. Causal validation and baseline | Oct 12–18 | 2, start of 3 | Core |
+| 3. Modeling and experimentation | Oct 19–25 | 3, 4 | Core |
+| 4. Verification and deployment | Oct 26–Nov 1 | Core gate, then 5 | Core gate, Stretch |
+| 5. Monitoring-lite and release | Nov 2–4 | 6 (lite), README | Stretch |
 
-### Week 1 (Sep 9–15) — Setup + Driver-Agnostic EDA
+### Phase 1 — Driver discovery (Oct 5–11)
 
-Env setup, download Cell2Cell (train+holdout) + IBM Telco, verify real schema against proposal assumptions (including whether a billing-error-like field actually exists), full EDA, rank **all 58 features** by effect size vs. churn — not just the billing hypothesis.
+- Load and validate both datasets; data dictionary for all 58 Cell2Cell and 21 IBM Telco columns
+- EDA: nulls, dtypes, class balance, distributions
+- Rank **all 58 features** by effect size vs. churn (point-biserial, Cramér's V, Mann-Whitney U as appropriate), not the billing hypothesis by default
+- Cohort analysis on the top 3–5 candidates: churn-rate lift, confidence interval, cohort size
+- Select one leading driver, with the reason written down
+- **Gate:** ranked candidate table and a written driver-selection rationale are committed
 
-- Data dictionary for all 58 Cell2Cell + 21 IBM Telco features, committed
-- Ranked driver-candidate table (effect size, not p-value) with real numbers
-- **Checkpoint**: table exists and is committed before Week 2 starts
+### Phase 2 — Causal validation and baseline (Oct 12–18)
 
-### Week 2 (Sep 16–22) — Cohort Analysis + Driver Selection
+- Confirm panel vs. cross-sectional structure first; propensity score matching (primary), DiD only if the data supports it
+- Covariate balance diagnostics; ATT estimate with confidence interval
+- Feature engineering pipeline built from what EDA surfaced; Cell2Cell provider holdout as the final test set (PROPOSAL.md §3.5); SMOTE on the training fold only
+- Logistic regression baseline vs. persistence baseline; MLflow tracking begins
+- **Gate:** balance diagnostics pass; ATT has a CI; the baseline beats persistence by a stated margin, with a real MLflow run logged
 
-Cohort comparison on the top 3–5 candidates from Week 1 (churn-rate lift, CI, cohort sample size each), select one leading driver.
+### Phase 3 — Modeling and experimentation (Oct 19–25)
 
-- **Checkpoint**: driver selection is written down with the *reason* (effect size + plausibility + adequate cohort N), not just the name — and it's whatever the data actually showed, not a foregone conclusion
+This phase packs two objectives into one week and is the main schedule risk. If Objective 3 slips, Objective 6 is cut first.
 
-### Week 3 (Sep 23–29) — Causal Validation
+- **Obj 3:** XGBoost with Optuna tuning (MLflow-tracked), SHAP (global and per-prediction), DeLong test vs. baseline, IBM Telco cross-check scoped to the selected driver (PROPOSAL.md §3.6)
+- **Obj 4:** CUPED-based simulated A/B experiment; the synthetic effect size is written down as an assumption grounded in published retention-campaign ranges; variance reduction and significance testing on raw vs. CUPED-adjusted outcomes
+- **Gate:** AUC-ROC lands in the realistic 0.75–0.80 range (a 90%+ result means find the leakage, not celebrate); simulation assumptions are labelled as assumptions, not measured effects
 
-Confirm panel-vs-cross-sectional data structure first; propensity score matching (primary — see PROPOSAL.md §1.1 Objective 2) with covariate balance diagnostics; DiD only if data structure actually supports it.
+### Phase 4 — Verification and deployment (Oct 26–Nov 1)
 
-- **Checkpoint**: covariate balance diagnostics pass; ATT estimate exists with a confidence interval, not a bare point estimate
+- **Core verification pass (about 2 days):** rerun every notebook top to bottom; confirm every number in `docs/core_results.md` traces to committed code output; "TBD" for anything not solid
+- **Gate before deployment:** Core verification passes. Deployment does not start before it.
+- **Obj 5:** MLflow-registered model to S3; Docker image to ECR; FastAPI service on ECS Fargate (or App Runner, chosen at the start based on setup overhead) with a least-privilege IAM role (PROPOSAL.md §10.5); `POST /predict`, `POST /batch-predict`, `GET /health`, `GET /model-info`; GitHub Actions build, push, deploy pipeline that extends the existing lint and test workflow; access restricted by API key or IP allowlist
+- **Gate:** the live endpoint responds, with measured latency recorded (target under 100ms; stated as measured only once it is)
 
-### Week 4 (Sep 30–Oct 6) — Feature Engineering + Baseline Model
+### Phase 5 — Monitoring-lite and release (Nov 2–4)
 
-Feature engineering pipeline built from what EDA actually surfaced; Cell2Cell provider train/holdout split as final test set (§3.5); SMOTE on training fold only; logistic regression baseline vs. persistence baseline; MLflow tracking begins.
+- **Obj 6 (lite):** Evidently AI drift report on Cell2Cell features; a Claude diagnosis step with its reasoning logged; no autonomous retrain, no full decision-tree agent. The fuller agent (seasonal / product-change / pipeline-bug diagnosis, CloudWatch alarms, incident reports) is deferred.
+- README: architecture diagram, results, before/after, Skills Demonstrated, written only from numbers that exist in committed code and logs
+- **Gate:** every README claim traces to committed code or logs; if Obj 6 or the README would be rushed, drop Obj 6 and keep the README honest
 
-- **Checkpoint**: first real MLflow run logged; baseline beats persistence, with the margin stated
+## Deferred (not in the one-month window)
 
-### Week 5 (Oct 7–13) — XGBoost + SHAP
-
-XGBoost + Optuna tuning, MLflow-tracked; SHAP (global + per-prediction); significance test (e.g. DeLong's) vs. baseline; IBM Telco cross-check scoped to whatever driver Week 2 selected (§3.6).
-
-- **Checkpoint**: AUC-ROC lands in the realistic 0.75–0.80 range on Cell2Cell — a 90%+ result means stop and find the leakage, not celebrate
-
-### Week 6 (Oct 14–20) — CUPED-Based Simulated A/B Experiment
-
-Explicit simulation protocol (§1.1 Objective 4: synthetic effect size grounded in published retention-campaign ranges, not the model's own prediction); CUPED implementation; variance-reduction measurement; significance testing on raw vs. CUPED-adjusted outcomes.
-
-- **Checkpoint**: simulation assumptions are written down explicitly as assumptions, not disguised as measured effects
-
-### Week 7 (Oct 21–27) — Reproducibility & Verification Pass
-
-Rerun every notebook top-to-bottom; confirm every number in any summary doc traces to committed code output; write `docs/core_results.md` with real numbers only, "TBD" for anything not solid.
-
-- **Checkpoint**: this is the actual gate before Stretch objectives start — not a formality
-
-## Stretch phases — Objectives 5–6
-
-Weeks below are planned, not just "TBD" — but they start counting from whenever Week 7's Core gate actually passes, not from a fixed calendar date. If Core runs long, everything here shifts by the same amount; these weeks don't compress to protect the Oct 23 date, because that date is already retired (see PROPOSAL.md header).
-
-### Week 8–9 — AWS Deployment (Objective 5)
-
-FastAPI service, containerized and deployed to AWS — this is the objective that turns "AWS" from an unbacked resume line into a demonstrated deployment.
-
-- MLflow-registered model artifact pushed to S3
-- Dockerfile for the FastAPI service; image pushed to ECR
-- Service deployed to ECS Fargate (or App Runner, decided at start of this week based on actual setup overhead) with a scoped, least-privilege IAM role (PROPOSAL.md §10.5)
-- `POST /predict`, `POST /batch-predict`, `GET /health`, `GET /model-info`; target <100ms per prediction
-- GitHub Actions: build → push to ECR → deploy pipeline (extends the existing lint/test workflow, doesn't replace it)
-- Streamlit dashboard (cohort analysis, A/B results, model performance, drift status) — local/Docker Compose to start
-- Access restricted (API key or IP allowlist), not left open to the public internet by default
-
-### Week 10–11 — LLM Drift Monitor + AI Agent (Objective 6)
-
-Agentic data drift monitoring with LLM-powered root cause diagnosis and autonomous retrain decisions.
-
-- Evidently AI drift detection on Cell2Cell features; drift reports written to S3 alongside MLflow artifacts
-- LLM agent following a structured diagnosis decision tree
-- 3 diagnosis categories: seasonal / product change / pipeline bug
-- Autonomous retrain-vs-flag decision with reasoning logged (S3 + CloudWatch Logs)
-- CloudWatch alarm on the drift-summary metric — the AWS-native alerting path (PROPOSAL.md §10.3)
-- AI explainer: SHAP values → plain-English churn score explanation
-- Incident report auto-generator for stakeholders
-
-### Week 12 — Polish + GitHub + Demo + Interview Prep
-
-- README with architecture diagram, setup instructions, business impact — written only once real numbers exist from Week 7 and a real deployment exists from Weeks 8–11
-- Demo GIF/video walkthrough (2-3 min) showing the live AWS-deployed endpoint, not just local
-- Architecture diagram (incl. the AWS deployment path)
-- All notebooks cleaned and commented
-- DS and MLE interview stories finalized
-- LinkedIn post published
+Streamlit dashboard, autonomous retrain-vs-flag decisions, CloudWatch alarms on drift, the SHAP-to-LLM churn explainer, the incident report generator, and Terraform/IaC. These stay in `docs/PROPOSAL.md` as the target design but are not scheduled.
 
 ## Tech stack
 
@@ -106,29 +75,25 @@ Agentic data drift monitoring with LLM-powered root cause diagnosis and autonomo
 | Data | Python 3.11, Pandas, NumPy, DuckDB, Matplotlib, Seaborn |
 | DS Analysis | SciPy, Statsmodels, CUPED (custom), SHAP |
 | ML | Scikit-learn, XGBoost, Imbalanced-learn (SMOTE), MLflow |
-| AI | LangChain, Claude API, ChromaDB/FAISS, Evidently AI |
-| Deployment | FastAPI, Docker, Streamlit, GitHub Actions |
-| Cloud | AWS — S3, ECR, ECS Fargate/App Runner, CloudWatch, IAM |
+| AI | Claude API, Evidently AI (lite monitoring) |
+| Deployment | FastAPI, Docker, GitHub Actions |
+| Cloud | AWS — S3, ECR, ECS Fargate/App Runner, IAM |
 | Dev Tools | VS Code + Jupyter, Git/GitHub, pip + venv |
 
 ## System architecture (component overview)
 
-Data flow: `Raw CSV → Feature Engineering → XGBoost Model → S3/ECR → ECS Fargate (FastAPI) → Streamlit`, with a parallel path `Drift Monitor → LLM Agent → S3/CloudWatch → Incident Report`. All experiments and models tracked in MLflow.
+Data flow: `Raw CSV → Feature Engineering → XGBoost Model → S3/ECR → ECS Fargate (FastAPI)`, with a lite parallel path `Evidently drift report → Claude diagnosis (logged)`. All experiments and models tracked in MLflow.
 
-| Component | Description |
-|---|---|
-| Data Ingestion Layer | Loads Cell2Cell + IBM Telco, validates on load, DuckDB for SQL-style analysis |
-| Feature Engineering Pipeline | Validated driver feature (selected in Week 2, not presumed) + derived features, sklearn Pipeline, pickled for serving |
-| Cohort Analysis Engine | Core DS insight module — cohort churn comparison on top candidates, propensity matching, CUPED |
-| A/B Experimentation Framework | CUPED-based simulator, sample size calc, SRM detection, significance testing |
-| XGBoost Model | Primary classifier, MLflow-tracked, tuned, calibrated, registered |
-| SHAP Explainability Module | Per-prediction SHAP values, waterfall plots, global importance |
-| Evidently AI Drift Monitor | Feature distribution monitoring vs. training baseline, custom thresholds |
-| LLM Drift Diagnosis Agent | LangChain agent; decision tree over seasonal/product-change/pipeline-bug/real-drift; logged reasoning |
-| AI Churn Explainer | SHAP values → LLM → plain-English per-customer risk explanation |
-| Incident Report Generator | Drift event → LLM → structured stakeholder report |
-| FastAPI Serving Layer | `/predict`, `/batch-predict`, `/health`, `/model-info`, <100ms, deployed on ECS Fargate/App Runner |
-| AWS Deployment Layer | S3 (model artifacts, drift reports), ECR (image registry), ECS Fargate/App Runner (compute), CloudWatch (logs, alarms), IAM (least-privilege service role) |
-| Streamlit Dashboard | Cohort analysis, A/B results, model performance + SHAP, drift status |
-| MLflow Tracking | Experiment log, model registry, artifact storage |
-| Docker Compose Stack | Local dev only — `docker-compose up` starts API (:8000), Streamlit (:8501), MLflow (:5000) |
+| Component | Description | Phase |
+|---|---|---|
+| Data Ingestion Layer | Loads Cell2Cell + IBM Telco, validates on load, DuckDB for SQL-style analysis | 1 |
+| Cohort Analysis | Cohort churn comparison on top candidates | 1 |
+| Causal Validation | Propensity score matching, balance diagnostics, ATT + CI | 2 |
+| Feature Engineering Pipeline | Validated driver feature (selected in Phase 1, not presumed) plus derived features, sklearn Pipeline | 2 |
+| XGBoost Model | Primary classifier, MLflow-tracked, tuned, registered | 3 |
+| SHAP Explainability | Per-prediction SHAP values, waterfall plots, global importance | 3 |
+| A/B Experimentation Framework | CUPED-based simulator, sample size calc, significance testing | 3 |
+| FastAPI Serving Layer | `/predict`, `/batch-predict`, `/health`, `/model-info`, deployed on ECS Fargate/App Runner | 4 |
+| AWS Deployment Layer | S3 (model artifacts), ECR (image registry), ECS Fargate/App Runner (compute), IAM (least-privilege role) | 4 |
+| Drift Monitor (lite) | Evidently AI drift report plus a logged Claude diagnosis | 5 |
+| MLflow Tracking | Experiment log, model registry, artifact storage | 2 onward |
